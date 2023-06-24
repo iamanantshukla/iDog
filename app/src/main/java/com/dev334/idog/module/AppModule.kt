@@ -2,6 +2,7 @@ package com.dev334.idog.module
 
 import com.dev334.idog.repository.DogRepository
 import com.dev334.idog.retrofit.ApiInterface
+import com.dev334.idog.util.LruCacheManager
 import com.dev334.idog.viewmodel.GenerateViewModel
 import okhttp3.OkHttpClient
 import org.koin.androidx.viewmodel.dsl.viewModel
@@ -20,7 +21,7 @@ val appModule = module {
     }
     single {
         Retrofit.Builder()
-            .baseUrl("https://dog.ceo/api/breeds/image/random")
+            .baseUrl("https://dog.ceo/api/breeds/image/")
             .addConverterFactory(GsonConverterFactory.create())
             .client(get())
             .build()
@@ -29,7 +30,6 @@ val appModule = module {
     single<DogRepository>{
         DogRepository(get())
     }
-
     viewModel{
         GenerateViewModel(get())
     }

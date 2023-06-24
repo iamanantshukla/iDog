@@ -2,78 +2,129 @@ package com.dev334.idog.util
 
 import android.content.Context
 import android.graphics.Bitmap
-import android.util.LruCache
-import java.io.*
+import android.graphics.BitmapFactory
+import android.os.Environment
+import android.util.Log
+import com.jakewharton.disklrucache.DiskLruCache
+import java.io.File
+import java.io.IOException
 
-class LruCacheManager(private val context: Context) {
-    private val cache: LruCache<String, Bitmap>
-    private val cacheFileName = "image_cache"
+class LruCacheManager(context: Context) {
+
+    private val MAX_DISK_CACHE_SIZE = 40 * 1024 * 1024 // 40MB
+    private val DISK_CACHE_SUBDIR = "image_cache"
+    private var diskCache: DiskLruCache
+    private var keys = ArrayList<String>()
+
+    companion object {
+        private var instance: LruCacheManager? = null
+
+        fun getInstance(context: Context): LruCacheManager {
+            if (instance == null) {
+                instance = LruCacheManager(context)
+            }
+            return instance!!
+        }
+    }
 
     init {
-        // Initialize the cache with maximum size of 20 images
-        val maxCacheSize = 20
-        cache = object : LruCache<String, Bitmap>(maxCacheSize) {
-            override fun sizeOf(key: String, value: Bitmap): Int {
-                // Return the size of the bitmap in bytes (assuming each pixel is 4 bytes)
-                return value.byteCount / 1024
+        val diskCacheDir = getDiskCacheDir(context, DISK_CACHE_SUBDIR)
+        try {
+            diskCache = DiskLruCache.open(diskCacheDir, 1, 1, MAX_DISK_CACHE_SIZE.toLong())
+        } catch (e: IOException) {
+            e.printStackTrace()
+            throw e
+        }
+
+        // Populating keys array with existing keys in disk cache
+        val cacheDir = diskCache.directory
+        val files = cacheDir.listFiles()
+        if (files != null) {
+            for (file in files) {
+                val key = file.name
+                if(key=="journal"){
+                    continue
+                }
+                keys.add(key.dropLast(2))
             }
         }
+    }
 
-        // Load cache from persistent storage
-        val cachedImages = loadCacheFromStorage()
-        for ((key, bitmap) in cachedImages) {
-            cache.put(key, bitmap)
+    fun addImageToCache(bitmap: Bitmap) {
+        if(keys.size==20){
+            val key = keys[0]
+            keys.remove(key);
+            diskCache.remove(key);
+        }
+        val key = System.currentTimeMillis().toString()
+
+        val diskCacheKey = getDiskCacheKey(key)
+
+        try {
+            val editor = diskCache.edit(diskCacheKey)
+            if(editor!=null) {
+                editor.newOutputStream(0).use { outputStream ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                    editor.commit()
+                    keys.add(diskCacheKey)
+                }
+            }
+        } catch (e: IOException) {
+            Log.e("LruCacheManagerDebugger", "addImageToCache: "+e.message)
         }
     }
 
-    fun addImageToCache(key: String, bitmap: Bitmap) {
-        cache.put(key, bitmap)
-        saveCacheToStorage()
-    }
-
-    fun getAllImagesInCache(): List<Bitmap> {
+    fun getAllImages(): MutableList<Bitmap> {
         val images = mutableListOf<Bitmap>()
-        val snapshot = cache.snapshot()
-        val keys = snapshot.keys
-
-        for(key in keys) {
-            val bitmap = snapshot[key]
-            bitmap?.let {
-                images.add(it)
+        // Retrieve images from disk cache
+        val diskCacheIterator = diskCache.directory.listFiles()?.iterator()
+        while (diskCacheIterator!!.hasNext()) {
+            val snapshot = diskCacheIterator.next()
+            val inputStream = snapshot.inputStream()
+            val bitmap = BitmapFactory.decodeStream(inputStream)
+            if (bitmap != null) {
+                images.add(bitmap)
             }
         }
-
         return images
     }
 
-    private fun saveCacheToStorage() {
-        val cacheDir = context.cacheDir
-        val cacheFile = File(cacheDir, cacheFileName)
-        val outputStream = ObjectOutputStream(FileOutputStream(cacheFile))
-        outputStream.writeObject(cache.snapshot())
-        outputStream.close()
+    fun clearCache() {
+        // Close the disk cache
+        diskCache.close()
+
+        // Clear disk cache directory
+        val cacheDir = diskCache.directory
+        deleteCacheDir(cacheDir)
+
+        // Re-create disk cache
+        diskCache = DiskLruCache.open(cacheDir, 1, 1, MAX_DISK_CACHE_SIZE.toLong())
+
+        // Clear keys list
+        keys.clear()
     }
 
-    private fun loadCacheFromStorage(): HashMap<String, Bitmap> {
-        val cacheDir = context.cacheDir
-        val cacheFile = File(cacheDir, cacheFileName)
-        val cachedImages = HashMap<String, Bitmap>()
-
-        if (cacheFile.exists()) {
-            val inputStream = ObjectInputStream(FileInputStream(cacheFile))
-            val cachedData = inputStream.readObject() as HashMap<String, Bitmap>
-            inputStream.close()
-
-            // Ensure the loaded data is within the cache size limit
-            val maxCacheSize = cache.maxSize()
-            for ((key, bitmap) in cachedData) {
-                if (cachedImages.size >= maxCacheSize) {
-                    break
-                }
-                cachedImages[key] = bitmap
+    private fun deleteCacheDir(cacheDir: File) {
+        val files = cacheDir.listFiles()
+        if (files != null) {
+            for (file in files) {
+                file.delete()
             }
         }
+    }
 
-        return cachedImages
+    private fun getDiskCacheDir(context: Context, subdir: String): File {
+        val cachePath = if (Environment.MEDIA_MOUNTED == Environment.getExternalStorageState() ||
+            !Environment.isExternalStorageRemovable()) {
+            context.externalCacheDir?.path ?: context.cacheDir.path
+        } else {
+            context.cacheDir.path
+        }
+        return File(cachePath + File.separator + subdir)
+    }
+
+    private fun getDiskCacheKey(key: String): String {
+        // Convert the key to a valid disk cache key
+        return key.hashCode().toString()
     }
 }

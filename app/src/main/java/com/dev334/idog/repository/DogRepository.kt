@@ -7,16 +7,20 @@ import com.dev334.idog.retrofit.ApiInterface
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import com.dev334.idog.model.Result
 
 class DogRepository(private val api: ApiInterface) {
 
-    private val responseBody = MutableLiveData<ApiResponse>()
-
-    fun getImageApiCall(): MutableLiveData<ApiResponse> {
+    fun getImageApiCall(onResult: (Result<String>) -> Unit){
         api.getImage().enqueue(object: Callback<ApiResponse> {
             override fun onResponse(call: Call<ApiResponse>, response: Response<ApiResponse>) {
-                if(response.body()!=null){
-                    responseBody.value = response.body()!!
+                if (response.isSuccessful) {
+                    val imageResponse = response.body()
+                    imageResponse?.let {
+                        onResult(Result.Success(it.message.toString()))
+                    } ?: onResult(Result.Error("Image URL not found"))
+                } else {
+                    onResult(Result.Error("Error: ${response.code()}"))
                 }
             }
 
@@ -25,7 +29,5 @@ class DogRepository(private val api: ApiInterface) {
             }
 
         })
-        return responseBody
     }
-
 }

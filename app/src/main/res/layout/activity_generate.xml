@@ -24,8 +24,6 @@
         android:fontFamily="@font/poppinsmedium"
         android:text="Generate!"
         android:textAllCaps="false"
-        android:paddingTop="2dp"
-        android:paddingBottom="2dp"
         android:paddingRight="24dp"
         android:paddingLeft="24dp"
         android:textColor="@color/white"

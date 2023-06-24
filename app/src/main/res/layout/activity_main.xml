@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MainActivity">
+    tools:context=".ui.MainActivity">
 
     <TextView
         android:id="@+id/textView"
@@ -27,9 +27,7 @@
         android:background="@drawable/button_background"
         android:fontFamily="@font/poppinssemibold"
         android:paddingLeft="24dp"
-        android:paddingTop="2dp"
         android:paddingRight="24dp"
-        android:paddingBottom="2dp"
         android:text="Generate Dogs!"
         android:textAllCaps="false"
         android:textColor="@color/white"
@@ -46,9 +44,7 @@
         android:background="@drawable/button_background"
         android:fontFamily="@font/poppinssemibold"
         android:paddingLeft="24dp"
-        android:paddingTop="2dp"
         android:paddingRight="24dp"
-        android:paddingBottom="2dp"
         android:text="My Recently Generated Dogs!"
         android:textAllCaps="false"
         android:textColor="@color/white"

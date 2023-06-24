@@ -1,12 +1,14 @@
 package com.dev334.idog.ui
 
-import androidx.appcompat.app.AppCompatActivity
+import android.content.res.ColorStateList
+import android.graphics.Color
 import android.os.Bundle
 import android.util.Log
-import com.bumptech.glide.Glide
+import androidx.appcompat.app.AppCompatActivity
 import com.dev334.idog.databinding.ActivityGenerateBinding
 import com.dev334.idog.viewmodel.GenerateViewModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
+
 
 class GenerateActivity : AppCompatActivity() {
 
@@ -19,18 +21,24 @@ class GenerateActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         binding.buttonGenerate.setOnClickListener{
-            generateViewModel.getImage()
-            generateViewModel.image.observe(this) {
-                val url: String? = it
-                if (!url.isNullOrEmpty()) {
-                    Glide.with(this)
-                        .load(url)
-                        .into(binding.imageView)
+            generateViewModel.getImage(this)
+            generateViewModel.bitmap.observe(this) {
+                if (it!=null) {
+                    binding.imageView.setImageBitmap(it)
                 }else{
                     Log.i("GenerateActivityDebugger", "onCreate: Error generating Image")
                 }
             }
         }
 
+        generateViewModel.isLoading.observe(this) {
+            if(it){
+                binding.buttonGenerate.isEnabled = false
+                binding.buttonGenerate.setTextColor(ColorStateList.valueOf(Color.GRAY))
+            }else{
+                binding.buttonGenerate.isEnabled = true
+                binding.buttonGenerate.setTextColor(ColorStateList.valueOf(Color.WHITE))
+            }
+        }
     }
 }
