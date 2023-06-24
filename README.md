@@ -1,6 +1,6 @@
 # iDog App
 
-iDog is a Android application that generates random dog images using the [Dog API]().
+iDog is a Android application that generates random dog images using the [Dog API](https://dog.ceo/dog-api/documentation/random).
 
 ## Tech Stack
 
